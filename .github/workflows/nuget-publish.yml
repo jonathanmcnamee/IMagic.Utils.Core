@@ -49,7 +49,8 @@ jobs:
             VER=${GITHUB_REF_NAME#v}
           fi
           echo "Packaging version: $VER"
-          dotnet pack IMagic.Utils/IMagic.Utils.csproj -c Release -o ./nupkg /p:PackageVersion=$VER --no-build
+          # Pack the renamed project file. Use the actual project path present in the repository.
+          dotnet pack IMagic.Utils/IMagic.Utils.Core.csproj -c Release -o ./nupkg /p:PackageVersion=$VER --no-build
 
       - name: Publish to NuGet.org
         # Do not reference 'secrets' in workflow-level expressions (not available at parse time).
