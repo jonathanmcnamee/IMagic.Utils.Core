@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>IMagic.Utils.Core</RootNamespace>
+    <AssemblyName>IMagic.Utils.Core</AssemblyName>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyTitle>IMagic.Utils.Core</AssemblyTitle>
+    <Description>A collection of generic extension methods and other utilities</Description>
+    <Product>IMagic.Utils.Core</Product>
+    <Copyright>Copyright © Jonathan Mc Namee 2025</Copyright>
+    <AssemblyVersion>1.0.0.27</AssemblyVersion>
+    <FileVersion>1.0.0.27</FileVersion>
+    <!-- Modern NuGet metadata -->
+    <PackageId>IMagic.Utils.Core</PackageId>
+    <Version>1.0.0.27</Version>
+    <Authors>Jonathan Mc Namee</Authors>
+    <Company>Jonathan Mc Namee</Company>
+    <PackageDescription>A collection of generic extension methods and other utilities</PackageDescription>
+    <PackageTags>utilities;extensions;helpers</PackageTags>
+    <!-- Replace the repository URL with your repository location -->
+    <RepositoryUrl>https://github.com/your-repo/IMagic</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- SPDX license expression (update if different) -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SystemWebAdapters" Version="2.0.0" />
+  </ItemGroup>
+
+</Project>
