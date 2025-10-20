@@ -5,14 +5,14 @@
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
     <TargetFramework>net9.0</TargetFramework>
-    <AssemblyTitle>IMagic.Core.Tests</AssemblyTitle>
+    <AssemblyTitle>IMagic.Utils.Core.Tests</AssemblyTitle>
     <Product>IMagic.Core.Tests</Product>
     <Copyright>Copyright ©  2018</Copyright>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\IMagic.Utils\IMagic.Utils.csproj" />
+    <ProjectReference Include="..\IMagic.Utils\IMagic.Utils.Core.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.*" />
     <PackageReference Include="MSTest.TestAdapter" Version="1.2.0" />
     <PackageReference Include="MSTest.TestFramework" Version="1.2.0" />
