@@ -1,0 +1,60 @@
+name: Build / Pack / Publish
+
+on:
+  push:
+    tags:
+      - 'v*'        # publish only on semver tags like v1.0.0
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: 'Package version (optional when triggered by tag). If provided, can include leading v.'
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+      - name: Pack
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          WORKFLOW_EVENT: ${{ github.event_name }}
+          INPUT_PKG_VER: ${{ github.event.inputs.package_version }}
+        run: |
+          # Determine package version: prefer input when manually triggered, otherwise use tag name
+          if [ "$WORKFLOW_EVENT" = "workflow_dispatch" ]; then
+            PV="$INPUT_PKG_VER"
+            if [ -z "$PV" ]; then
+              echo "No package_version provided for manual run. Exiting."
+              exit 1
+            fi
+            VER=${PV#v}
+          else
+            VER=${GITHUB_REF_NAME#v}
+          fi
+          echo "Packaging version: $VER"
+          dotnet pack IMagic.Utils/IMagic.Utils.csproj -c Release -o ./nupkg /p:PackageVersion=$VER --no-build
+
+      - name: Publish to NuGet.org
+        if: ${{ secrets.NUGET_API_KEY != '' }}
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          echo "Pushing packages to NuGet.org (skip duplicates)"
+          dotnet nuget push ./nupkg/*.nupkg -k $NUGET_API_KEY -s https://api.nuget.org/v3/index.json --skip-duplicate
