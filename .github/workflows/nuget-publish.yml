@@ -52,7 +52,8 @@ jobs:
           dotnet pack IMagic.Utils/IMagic.Utils.csproj -c Release -o ./nupkg /p:PackageVersion=$VER --no-build
 
       - name: Publish to NuGet.org
-        if: ${{ secrets.NUGET_API_KEY != '' }}
+        # Do not reference 'secrets' in workflow-level expressions (not available at parse time).
+        # The step will fail at runtime if the secret is missing; ensure NUGET_API_KEY is set in repository secrets.
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
