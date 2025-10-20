@@ -1,4 +1,4 @@
-# IMagic.Utils.Core
+﻿# IMagic.Utils.Core
 
 A small collection of general-purpose utility and extension helpers for .NET projects.
 
@@ -6,7 +6,7 @@ This library gathers commonly used helpers (I/O, path helpers, random/fake-data 
 
 ## Features
 
-- Lightweight, framework?friendly utilities targeting `.NET 9`.
+- Lightweight, framework‑friendly utilities targeting `.NET 9`.
 - Helpers grouped under `IMagic.Utils.Core` (see the `IMagic.Utils/Utils` folder).
 - Packable as a modern NuGet package via `dotnet pack` / GitHub Actions.
 
@@ -44,9 +44,47 @@ using IMagic.Utils.Core;
 
 Recommended: publish only from tagged releases. Example GitHub Actions workflow:
 
-- Build and test on `ubuntu-latest` with `actions/setup-dotnet@v3` targeting `9.0.x`.
-- Pack with `/p:PackageVersion` derived from the tag (strip leading `v` if used).
-- Push to NuGet.org using a repository secret `NUGET_API_KEY` and `dotnet nuget push --skip-duplicate`.
+```yaml
+name: Build / Pack / Publish
+
+on:
+  push:
+    tags:
+      - 'v*'        # publish only on semver tags like v1.0.0
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+
+      - name: Pack
+        env:
+          PACKAGE_VERSION: ${{ github.ref_name }}   # tag name like v1.2.3 (you may strip leading v)
+        run: |
+          # remove leading 'v' if you tag like 'v1.2.3'
+          VER=${PACKAGE_VERSION#v}
+          dotnet pack IMagic.Utils/IMagic.Utils.csproj -c Release -o ./nupkg /p:PackageVersion=$VER --no-build
+
+      - name: Publish to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push ./nupkg/*.nupkg -k $NUGET_API_KEY -s https://api.nuget.org/v3/index.json --skip-duplicate
+```
 
 ## Contributing
 
