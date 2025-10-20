@@ -76,7 +76,10 @@ namespace IMagic.Core.Tests
             string path = Path.Combine(Path.GetTempPath(), "test.txt");
 
             // ensure clean state
-            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
 
             IOUtil.WriteTextFile(path, "line 1");
             IOUtil.WriteTextFile(path, "line 2", true);

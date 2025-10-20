@@ -142,22 +142,22 @@ public static class IOUtil
         }
         return "0 Bytes";
     }
-    public static string GetMimeType(string fileName)
-    {
-        string mimeType = "application/unknown";
+    //public static string GetMimeType(string fileName)
+    //{
+    //    string mimeType = "application/unknown";
 
-        string ext = Path.GetExtension(fileName).ToLower();
+    //    string ext = Path.GetExtension(fileName).ToLower();
 
-        using (RegistryKey regKey = Registry.ClassesRoot.OpenSubKey(ext))
-        {
-            if (regKey != null && regKey.GetValue("Content Type") != null)
-            {
-                mimeType = regKey.GetValue("Content Type").ToString();
-            }
-        }
+    //    using (RegistryKey regKey = Registry.ClassesRoot.OpenSubKey(ext))
+    //    {
+    //        if (regKey != null && regKey.GetValue("Content Type") != null)
+    //        {
+    //            mimeType = regKey.GetValue("Content Type").ToString();
+    //        }
+    //    }
 
-        return mimeType;
-    }
+    //    return mimeType;
+    //}
     public static string GenerateRandomFileName(int length)
     {
         string allowedChars = "abcdefghijkmnopqrstuvwxyz0123456789";
