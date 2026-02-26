@@ -6,7 +6,7 @@
 [![Build](https://github.com/jonathanmcnamee/IMagic.Utils.Core/actions/workflows/nuget-publish.yml/badge.svg)](https://github.com/jonathanmcnamee/IMagic.Utils.Core/actions/workflows/nuget-publish.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
-A focused, zero-dependency utility library for .NET 9 — a battle-tested set of extension methods, I/O helpers, cryptography wrappers, geography utilities, and test-data generators that eliminate the same boilerplate across every project.
+A focused, zero-dependency utility library for .NET 10 — a battle-tested set of extension methods, I/O helpers, cryptography wrappers, geography utilities, and test-data generators that eliminate the same boilerplate across every project.
 
 ---
 
