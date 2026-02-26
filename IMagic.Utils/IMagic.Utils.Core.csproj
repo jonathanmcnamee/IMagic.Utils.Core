@@ -3,22 +3,21 @@
     <OutputType>Library</OutputType>
     <RootNamespace>IMagic.Utils.Core</RootNamespace>
     <AssemblyName>IMagic.Utils.Core</AssemblyName>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <AssemblyTitle>IMagic.Utils.Core</AssemblyTitle>
     <Description>A collection of generic extension methods and other utilities</Description>
     <Product>IMagic.Utils.Core</Product>
     <Copyright>Copyright © Jonathan Mc Namee 2025</Copyright>
-    <AssemblyVersion>1.0.0.28</AssemblyVersion>
-    <FileVersion>1.0.0.28</FileVersion>
+    <AssemblyVersion>1.0.0.29</AssemblyVersion>
+    <FileVersion>1.0.0.29</FileVersion>
     <!-- Modern NuGet metadata -->
     <PackageId>IMagic.Utils.Core</PackageId>
-    <Version>1.0.0.28</Version>
+    <Version>1.0.0.29</Version>
     <Authors>Jonathan Mc Namee</Authors>
     <Company>Jonathan Mc Namee</Company>
     <PackageDescription>A collection of generic extension methods and other utilities</PackageDescription>
     <PackageTags>utilities;extensions;helpers</PackageTags>
-    <!-- Replace the repository URL with your repository location -->
-    <RepositoryUrl>https://github.com/your-repo/IMagic</RepositoryUrl>
+    <RepositoryUrl>https://github.com/jonathanmcnamee/IMagic.Utils.Core</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <!-- SPDX license expression (update if different) -->
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -28,15 +27,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SystemWebAdapters" Version="2.0.0" />
-    <PackageReference Include="System.Management" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SystemWebAdapters" Version="2.3.0" />
+    <PackageReference Include="System.Management" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup>
     <!-- README at repository root - include it in the package root so it appears on nuget.org -->
     <None Include="..\README.md" Pack="true" PackagePath="" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Upstream\" />
   </ItemGroup>
 
 </Project>

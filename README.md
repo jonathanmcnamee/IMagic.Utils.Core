@@ -2,7 +2,7 @@
 
 [![NuGet](https://img.shields.io/nuget/v/IMagic.Utils.Core.svg?color=blue&label=NuGet)](https://www.nuget.org/packages/IMagic.Utils.Core)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/IMagic.Utils.Core.svg?color=green)](https://www.nuget.org/packages/IMagic.Utils.Core)
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 [![Build](https://github.com/jonathanmcnamee/IMagic.Utils.Core/actions/workflows/nuget-publish.yml/badge.svg)](https://github.com/jonathanmcnamee/IMagic.Utils.Core/actions/workflows/nuget-publish.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-brightgreen.svg)](LICENSE)
 
