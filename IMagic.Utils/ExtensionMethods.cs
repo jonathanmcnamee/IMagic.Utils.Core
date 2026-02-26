@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
@@ -9,11 +9,57 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 
-public static class ExtensionMethods
+public static partial class ExtensionMethods
 {
+    #region Compiled Regex Instances
+
+    [GeneratedRegex(@"<(.|
+)*?>")]
+    private static partial Regex HtmlTagRegex();
+
+    [GeneratedRegex(@"^([a-zA-Z0-9_\-\.\+]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$", RegexOptions.IgnoreCase)]
+    private static partial Regex EmailRegex();
+
+    [GeneratedRegex(@"[^a-z0-9\s-]")]
+    private static partial Regex UrlInvalidCharsRegex();
+
+    [GeneratedRegex(@"[\s-]+")]
+    private static partial Regex UrlSpacesHyphensRegex();
+
+    [GeneratedRegex(@"[^a-zA-Z0-9]")]
+    private static partial Regex NonAlphaNumericRegex();
+
+    [GeneratedRegex(@"[^a-zA-Z0-9\-]")]
+    private static partial Regex NonAlphaNumericDashRegex();
+
+    [GeneratedRegex(@"[^a-zA-Z]")]
+    private static partial Regex NonAlphabeticRegex();
+
+    // SplitQuoted uses static readonly (pattern embeds quoted substrings which cannot be cleanly expressed in a [GeneratedRegex] verbatim string)
+    private static readonly Regex SplitQuotedStaticRegex = new Regex(@"((""((?<token>.*?)(?<!\\)"")|(?<token>[\w]+))(\s)*)", RegexOptions.Compiled);
+
+    [GeneratedRegex(@"-{2,}")]
+    private static partial Regex MultipleDashesRegex();
+
+    #endregion
+
+    #region Static Fields
+
+    // Cached encoding instance — Encoding.GetEncoding does a name lookup on every call
+    private static readonly Encoding CyrillicEncoding = Encoding.GetEncoding("Cyrillic");
+
+    // Cached char[] for UrlFriendly Trim — eliminates per-call "- ".ToCharArray() (maps to report §2.6b)
+    private static readonly char[] UrlTrimChars = ['-', ' '];
+
+    // Cached format strings for ToStringLeadingZero — eliminates string.Format("d{n}") per call
+    private static readonly string[] LeadingZeroFormats = ["d0", "d1", "d2", "d3", "d4", "d5", "d6"];
+
+    #endregion
+
     #region bool
 
     public static string ToStringYesNo(this bool item)
@@ -35,7 +81,7 @@ public static class ExtensionMethods
     /// <returns></returns>
     public static string ToShortDateStringOrShortTimeString(this DateTime item)
     {
-        if (item.Date == DateTime.UtcNow.Date)
+        if (item.Date == DateTime.Now.Date)
         {
             return item.ToShortTimeString();
         }
@@ -149,11 +195,6 @@ public static class ExtensionMethods
         return item.ToString("dddd, MMMM dd, yyyy");
     }
 
-    public static string ToMMMMyyyyString(this DateTime item)
-    {
-        return item.ToString("MMMM yyyy");
-    }
-
     public static string ToMicroFormatDateTime(this DateTime dateTime)
     {
         return dateTime.ToString("yyyy-MM-ddTHH:mm:sszzz");
@@ -201,7 +242,7 @@ public static class ExtensionMethods
                 {
                     return "1 second ago";
                 }
-                return string.Format("{0} seconds ago", ts.Seconds);
+                return $"{ts.Seconds} seconds ago";
             }
             else if (ts.TotalMinutes < 2)
             {
@@ -209,7 +250,7 @@ public static class ExtensionMethods
             }
             else if (ts.TotalMinutes < 60)
             {
-                return ts.Minutes.ToString() + " minutes ago";
+                return $"{ts.Minutes} minutes ago";
             }
             else if (ts.TotalHours < 2)
             {
@@ -217,7 +258,7 @@ public static class ExtensionMethods
             }
             else if (ts.Hours < DateTime.Now.Hour)
             {
-                return string.Format("{0} hours ago", ts.Hours);
+                return $"{ts.Hours} hours ago";
             }
         }
         else if (CreateDate.Date >= DateTime.Now.AddDays(-1).Date)
@@ -231,7 +272,7 @@ public static class ExtensionMethods
 
             if (ts.TotalDays < 7)
             {
-                return Math.Ceiling(ts.TotalDays) + " days ago";
+                return $"{Math.Ceiling(ts.TotalDays)} days ago";
             }
             else if (ts.Days <= 14)
             {
@@ -240,20 +281,20 @@ public static class ExtensionMethods
             else if (ts.Days <= 50)
             {
                 int weeks = ts.Days / 7;
-                return string.Format("{0} weeks ago", weeks);
+                return $"{weeks} weeks ago";
             }
             else if (ts.Days <= 365)
             {
                 int monthsBetween = (int)Math.Ceiling(ts.Days / 31.00M);
-                return string.Format("{0} months ago", monthsBetween);
+                return $"{monthsBetween} months ago";
             }
             else if (CreateDate.Year == DateTime.Now.AddYears(-1).Year)
             {
-                return string.Format("last year");
+                return "last year";
             }
             else
             {
-                return string.Format("{0} years ago", (DateTime.Now.Year - CreateDate.Year));
+                return $"{DateTime.Now.Year - CreateDate.Year} years ago";
             }
         }
         return "Unknown";
@@ -271,7 +312,7 @@ public static class ExtensionMethods
             }
             else if (ts.TotalHours < 1)
             {
-                output = ts.Minutes.ToString() + " minutes";
+                output = $"{ts.Minutes} minutes";
             }
             else if (ts.TotalHours < 2)
             {
@@ -279,7 +320,7 @@ public static class ExtensionMethods
             }
             else if (ts.TotalHours >= 1 && ts.TotalDays < 1)
             {
-                output = ts.Hours + " hours";
+                output = $"{ts.Hours} hours";
             }
             else if (ts.TotalHours > 1 && ts.TotalDays < 1)
             {
@@ -287,21 +328,21 @@ public static class ExtensionMethods
             }
             else if ((int)ts.Days < 7)
             {
-                output = ts.Days + " days";
+                output = $"{ts.Days} days";
             }
             else if ((ts.Days >= 7) && (ts.Days <= 14))
             {
                 output = "1 week";
             }
-            else if (ts.Days < 58)//we want to display weeks up to 2 months[58 is total of 2 shortest months, feb-28 days + a 30 day month]
+            else if (ts.Days < 58)
             {
                 double m = ((double)ts.Days / (double)7);
-                output = Convert.ToInt32(m) + " weeks";
+                output = $"{Convert.ToInt32(m)} weeks";
             }
             else if (ts.Days < TotalDaysInYear)
             {
                 double m = ((double)ts.Days / (double)AverateDaysInMonth);
-                output = Convert.ToInt32(m) + " months";
+                output = $"{Convert.ToInt32(m)} months";
             }
             else if (ts.Days < (TotalDaysInYear * 2))
             {
@@ -310,10 +351,10 @@ public static class ExtensionMethods
             else
             {
                 double m = ((double)ts.Days / (double)TotalDaysInYear);
-                output = Convert.ToInt32(m) + " years";
+                output = $"{Convert.ToInt32(m)} years";
             }
 
-            output = string.Format("{0} old", output);
+            output = $"{output} old";
         }
         else
         {
@@ -336,13 +377,16 @@ public static class ExtensionMethods
     {
         string trailingZeros = ".00";
         string output = item.ToString("C");
-        //need to trim trailing zeros in a clean way
         if (output.EndsWith(trailingZeros))
         {
-            output = output.Substring(0, output.IndexOf(trailingZeros));
+            output = output.Substring(0, output.Length - trailingZeros.Length);
         }
         return output;
     }
+
+    // Pre-cached format strings; covers 0-4 d.p. which account for the vast majority of uses.
+    // Eliminates totalDecimalPlaces+2 string allocations per call (loop + string.Format).
+    private static readonly string[] DecimalPlaceFormats = ["0", "0.0", "0.00", "0.000", "0.0000"];
 
     /// <summary>
     /// defaults to 2 decimal places
@@ -354,14 +398,14 @@ public static class ExtensionMethods
         return item.ToStringDecimalPlaces(2);
     }
 
+    /// <summary>
+    /// Formats a double to the specified number of decimal places.
+    /// </summary>
     public static string ToStringDecimalPlaces(this double item, int totalDecimalPlaces)
     {
-        string suffix = "";
-        for (int i = 0; i < totalDecimalPlaces; i++)
-        {
-            suffix += "0";
-        }
-        string formatString = string.Format("0.{0}", suffix);
+        string formatString = totalDecimalPlaces < DecimalPlaceFormats.Length
+            ? DecimalPlaceFormats[totalDecimalPlaces]
+            : "0." + new string('0', totalDecimalPlaces);
         return item.ToString(formatString);
     }
     #endregion
@@ -439,7 +483,7 @@ public static class ExtensionMethods
     /// <returns></returns>
     public static bool AtLeast<T>(this IEnumerable<T> items, int minimum)
     {
-        IEnumerator<T> iEnumerator = items.GetEnumerator();
+        using IEnumerator<T> iEnumerator = items.GetEnumerator();
         int count = 0;
         while (iEnumerator.MoveNext())
         {
@@ -475,7 +519,7 @@ public static class ExtensionMethods
     /// <returns></returns>
     public static bool Exactly<T>(this IEnumerable<T> items, int exactAmount)
     {
-        IEnumerator<T> iEnumerator = items.GetEnumerator();
+        using IEnumerator<T> iEnumerator = items.GetEnumerator();
         int count = 0;
         while (iEnumerator.MoveNext())
         {
@@ -525,8 +569,8 @@ public static class ExtensionMethods
             items = items.ToList();
         }
 
-        List<T> output = new List<T>();
-        List<int> usedIndices = new List<int>();
+        List<T> output = new List<T>(Math.Min(count, itemCount));
+        List<int> usedIndices = new List<int>(Math.Min(count, itemCount));
 
         if (count > 0)
         {
@@ -550,8 +594,8 @@ public static class ExtensionMethods
 
     public static IEnumerable<T> RandomElementsAndRemainingItems<T>(this IEnumerable<T> items, int count, out List<T> remainingItems)// where T : class
     {
-        List<T> output = new List<T>();
-        List<int> randomIndices = new List<int>();
+        List<T> output = new List<T>(Math.Min(count, items.Count()));
+        List<int> randomIndices = new List<int>(Math.Min(count, items.Count()));
 
         if (count > 0)
         {
@@ -657,12 +701,12 @@ public static class ExtensionMethods
 
     public static string ToStringCommaSeperated(this IEnumerable<string> t)
     {
-        return string.Join(",", t.ToArray());
+        return string.Join(",", t);
     }
 
     public static string ToStringSeperated(this IEnumerable<string> t, string seperator)
     {
-        return string.Join(seperator, t.ToArray());
+        return string.Join(seperator, t);
     }
 
     #endregion
@@ -673,32 +717,15 @@ public static class ExtensionMethods
     public static string ToStringOrdinal(this int value)
     {
         if (value % 100 > 10 && value % 100 < 20)
+            return $"{value}th";
+
+        return (value % 10) switch
         {
-            return string.Format("{0}th", value);
-        }
-        else
-        {
-            int remainder = value % 10;
-            switch (remainder)
-            {
-                case 1:
-                    {
-                        return string.Format("{0}st", value);
-                    }
-                case 2:
-                    {
-                        return string.Format("{0}nd", value);
-                    }
-                case 3:
-                    {
-                        return string.Format("{0}rd", value);
-                    }
-                default:
-                    {
-                        return string.Format("{0}th", value);
-                    }
-            }
-        }
+            1 => $"{value}st",
+            2 => $"{value}nd",
+            3 => $"{value}rd",
+            _ => $"{value}th",
+        };
     }
 
     public static string ToStringLeadingZero(this int value)
@@ -708,7 +735,10 @@ public static class ExtensionMethods
 
     public static string ToStringLeadingZero(this int value, int leadingZeros)
     {
-        return value.ToString(string.Format("d{0}", leadingZeros));
+        string fmt = leadingZeros < LeadingZeroFormats.Length
+            ? LeadingZeroFormats[leadingZeros]
+            : $"d{leadingZeros}";
+        return value.ToString(fmt);
     }
 
     public static string ToStringNumber(this int i)
@@ -745,11 +775,9 @@ public static class ExtensionMethods
     public static string UrlFriendly(this string text)
     {
         string str = text.RemoveAccent().ToLower();
-
-        str = Regex.Replace(str, @"[^a-z0-9\s-]", ""); // remove invalid chars      
-        str = Regex.Replace(str, @"[\s-]+", "-"); // convert spaces and hyphens into one hyphen
-        str = str.Trim("- ".ToCharArray()); // trim any unecessary spaces or hyphens
-
+        str = UrlInvalidCharsRegex().Replace(str, "");
+        str = UrlSpacesHyphensRegex().Replace(str, "-");
+        str = str.Trim(UrlTrimChars);
         return str;
     }
 
@@ -758,9 +786,7 @@ public static class ExtensionMethods
     {
         if (text != null)
         {
-            string emailRegex = @"^([a-zA-Z0-9_\-\.\+]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)$";
-            Match match = Regex.Match(text, emailRegex, RegexOptions.IgnoreCase);
-            return match.Success;
+            return EmailRegex().IsMatch(text);
         }
         return false;
     }
@@ -772,12 +798,7 @@ public static class ExtensionMethods
         return textInfo.ToTitleCase(s);
     }
 
-    public static byte[] ToByteArray(this string s)
-    {
-        System.Text.ASCIIEncoding encoding = new System.Text.ASCIIEncoding();
-        Byte[] bytes = encoding.GetBytes(s);
-        return bytes;
-    }
+    public static byte[] ToByteArray(this string s) => Encoding.ASCII.GetBytes(s);
 
 
     public static bool HasValue(this string s)
@@ -808,51 +829,40 @@ public static class ExtensionMethods
 
     public static string StripHTML(this string s)
     {
-        string pattern = @"<(.|\n)*?>";
-        return Regex.Replace(s, pattern, string.Empty);
+        return HtmlTagRegex().Replace(s, string.Empty);
     }
 
     //fails on .net Standard :(
     public static string RemoveAccent(this string txt)
     {
-        byte[] bytes = System.Text.Encoding.GetEncoding("Cyrillic").GetBytes(txt);
-        return System.Text.Encoding.ASCII.GetString(bytes);
+        byte[] bytes = CyrillicEncoding.GetBytes(txt);
+        return Encoding.ASCII.GetString(bytes);
     }
 
 
     public static string StripNonAplhaNumeric(this string s)
     {
-        s = Regex.Replace(s, @"[^a-zA-Z0-9]", string.Empty);
-        return s;
+        return NonAlphaNumericRegex().Replace(s, string.Empty);
     }
 
     public static string StripNonAplhaNumericDash(this string s)
     {
-        s = Regex.Replace(s, @"[^a-zA-Z0-9\-]", string.Empty);
-        return s;
+        return NonAlphaNumericDashRegex().Replace(s, string.Empty);
     }
 
     public static string RemoveMultipleDashes(this string s)
     {
-        string doubleDash = "--";
-        while (s.Contains(doubleDash))
-        {
-            s = s.Replace(doubleDash, "-");
-        }
-        return s;
+        return MultipleDashesRegex().Replace(s, "-");
     }
 
     public static bool ContainsAny(this string s, IEnumerable<string> searchStrings)
     {
-        if (s.HasValue())
+        if (!s.HasValue()) return false;
+        foreach (string searchString in searchStrings)
         {
-            s = s.ToLower();
-            foreach (string searchString in searchStrings)
+            if (s.IndexOf(searchString, StringComparison.OrdinalIgnoreCase) > -1)
             {
-                if (s.Contains(searchString.ToLower()))
-                {
-                    return true;
-                }
+                return true;
             }
         }
         return false;
@@ -922,12 +932,10 @@ public static class ExtensionMethods
         {
             return input.RemovePost(post);
         }
-        else
+        int index = input.IndexOf(post);
+        if (index > -1)
         {
-            if (input.IndexOf(post) > -1)
-            {
-                return input.Substring(0, input.IndexOf(post + post.Length));
-            }
+            return input.Substring(0, index + post.Length);
         }
         return input;
     }
@@ -939,12 +947,12 @@ public static class ExtensionMethods
 
     public static string ToStringFuzzyTime(this TimeSpan ts)
     {
-        return string.Format("{0:00}:{1:00}:{2:00}", (int)ts.TotalHours, ts.Minutes, ts.Seconds);
+        return $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}";
     }
 
     public static string ToStringFuzzyTimeMillis(this TimeSpan ts)
     {
-        return string.Format("{0:00}:{1:00}:{2:00}:{3:00}", (int)ts.TotalHours, ts.Minutes, ts.Seconds, ts.Milliseconds);
+        return $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}:{ts.Milliseconds:00}";
     }
 
     #endregion
@@ -968,12 +976,7 @@ public static class ExtensionMethods
     /// <returns></returns>
     public static bool IsInt(this string s)
     {
-        if (s.HasValue())
-        {
-            int output = -1;
-            return int.TryParse(s, out output);
-        }
-        return false;
+        return s.HasValue() && int.TryParse(s, out _);
     }
 
     /// <summary>
@@ -983,54 +986,32 @@ public static class ExtensionMethods
     /// <returns></returns>
     public static int AsInt(this string s)
     {
-        if (s.IsInt())
-        {
-            int output = -1;
-            int.TryParse(s, out output);
+        if (s.HasValue() && int.TryParse(s, out int output))
             return output;
-        }
         return -1;
     }
 
     public static bool IsDouble(this string s)
     {
-        if (s.HasValue())
-        {
-            double output = 0;
-            return double.TryParse(s, out output);
-        }
-        return false;
+        return s.HasValue() && double.TryParse(s, out _);
     }
 
     public static double AsDouble(this string s)
     {
-        if (s.HasValue())
-        {
-            double output = 0;
-            double.TryParse(s, out output);
+        if (s.HasValue() && double.TryParse(s, out double output))
             return output;
-        }
         return -1;
     }
 
     public static bool IsBool(this string s)
     {
-        if (s.HasValue())
-        {
-            bool output = false;
-            return bool.TryParse(s, out output);
-        }
-        return false;
+        return s.HasValue() && bool.TryParse(s, out _);
     }
 
     public static bool AsBool(this string s)
     {
-        if (s.HasValue())
-        {
-            bool output = false;
-            bool.TryParse(s, out output);
+        if (s.HasValue() && bool.TryParse(s, out bool output))
             return output;
-        }
         return false;
     }
     #endregion
@@ -1043,12 +1024,7 @@ public static class ExtensionMethods
     /// <returns></returns>
     public static bool IsGuid(this string s)
     {
-        if (s.HasValue())
-        {
-            Guid output = Guid.Empty;
-            return Guid.TryParse(s, out output);
-        }
-        return false;
+        return s.HasValue() && Guid.TryParse(s, out _);
     }
 
     /// <summary>
@@ -1058,12 +1034,8 @@ public static class ExtensionMethods
     /// <returns></returns>
     public static Guid AsGuid(this string s)
     {
-        if (s.IsGuid())
-        {
-            Guid output = Guid.Empty;
-            Guid.TryParse(s, out output);
+        if (s.HasValue() && Guid.TryParse(s, out Guid output))
             return output;
-        }
         return Guid.Empty;
     }
     #endregion
@@ -1079,7 +1051,7 @@ public static class ExtensionMethods
             return null;
         }
         List<string> names = GetNames(memberExpression);
-        string name = string.Join(".", names.ToArray());
+        string name = string.Join(".", names);
         return name;
     }
 
@@ -1127,8 +1099,7 @@ memberExpression.Member.Name
     /// <returns></returns>
     public static string[] Split(this string text, string splitString, StringSplitOptions stringSplitOptions = StringSplitOptions.None)
     {
-        string[] output = text.Split(new string[] { splitString }, stringSplitOptions);
-        return output;
+        return text.Split(splitString, stringSplitOptions);
     }
 
     public static string DefaultIfEmpty(this string text, string defaultText)
@@ -1169,13 +1140,11 @@ memberExpression.Member.Name
 
     public static bool Contains(this string text, string searchTerm, bool ignoreCase)
     {
-        bool found = false;
-        if (text != null)
-        {
-            int index = text.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase);
-            found = (index > -1);
-        }
-        return found;
+        if (text == null) return false;
+        StringComparison comparison = ignoreCase
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return text.IndexOf(searchTerm, comparison) > -1;
     }
 
     public static string Remove(this string s, params string[] stringsToRemove)
@@ -1251,9 +1220,7 @@ memberExpression.Member.Name
     }
     public static string Append(this string s, string secondString, bool includeSpace)
     {
-        string space = includeSpace ? " " : "";
-        string output = string.Format("{0}{1}{2}", s, space, secondString);
-        return output;
+        return includeSpace ? $"{s} {secondString}" : s + secondString;
     }
 
 
@@ -1277,79 +1244,118 @@ memberExpression.Member.Name
 
     public static string RemoveNonAplhabetic(this string s)
     {
-        s = Regex.Replace(s, @"[^a-zA-Z]", string.Empty);
-        return s;
+        return NonAlphabeticRegex().Replace(s, string.Empty);
     }
 
     public static string RemoveNonAplhaNumeric(this string s)
     {
-        s = Regex.Replace(s, @"[^a-zA-Z0-9\-]", string.Empty);
-        return s;
+        return NonAlphaNumericDashRegex().Replace(s, string.Empty);
     }
 
     public static string RemoveNonAplhaNumericDash(this string s)
     {
-        s = Regex.Replace(s, @"[^a-zA-Z0-9\-]", string.Empty);
-        return s;
+        return NonAlphaNumericDashRegex().Replace(s, string.Empty);
     }
 
 
 
     public static string TidyName(this string name)
     {
-        string tidyName = string.Empty;
-
+        var sb = new StringBuilder();
         foreach (string namePart in name.Split(' '))
         {
-            tidyName += namePart[0].ToString().ToUpper();
-            tidyName += namePart.Substring(1) + " ";
+            sb.Append(char.ToUpper(namePart[0]));
+            sb.Append(namePart, 1, namePart.Length - 1);
+            sb.Append(' ');
         }
-
-        return tidyName.Trim();
+        if (sb.Length > 0) sb.Length--;
+        return sb.ToString();
     }
     public static string TidyName(this string name, bool alsoLower)
     {
-        string tidyName = string.Empty;
-
+        var sb = new StringBuilder();
         foreach (string namePart in name.Split(' '))
         {
-            tidyName += namePart[0].ToString().ToUpper();
-
+            sb.Append(char.ToUpper(namePart[0]));
             if (alsoLower)
-            {
-                tidyName += namePart.Substring(1).ToLower() + " ";
-            }
+                sb.Append(namePart.Substring(1).ToLower());
             else
-            {
-                tidyName += namePart.Substring(1) + " ";
-            }
+                sb.Append(namePart, 1, namePart.Length - 1);
+            sb.Append(' ');
         }
-
-        return tidyName.Trim();
+        if (sb.Length > 0) sb.Length--;
+        return sb.ToString();
     }
 
     public static string ToFirstLetterCapitalised(this string text)
     {
-        string capitalisedText = string.Empty;
-
-        if (text != null && text.Length > 0)
-        {
-            capitalisedText = text[0].ToString().ToUpper() + text.Substring(1);
-        }
-
-        return capitalisedText;
+        if (text == null || text.Length == 0)
+            return string.Empty;
+        return $"{char.ToUpper(text[0])}{text[1..]}";
     }
 
     public static List<string> SplitQuoted(this string s)
     {
-        Regex regex = new Regex(@"((""((?<token>.*?)(?<!\\)"")|(?<token>[\w]+))(\s)*)", RegexOptions.None);
-        List<string> result = (from Match m in regex.Matches(s)
-                               where m.Groups["token"].Success
-                               select m.Groups["token"].Value.Trim()).ToList();
-
-        return result;
+        return (from Match m in SplitQuotedStaticRegex.Matches(s)
+                where m.Groups["token"].Success
+                select m.Groups["token"].Value.Trim()).ToList();
     }
 
+
+    #endregion
+
+    #region float[]
+
+    /// <summary>
+    /// Copies a float array into a new byte array using <see cref="Buffer.BlockCopy"/>.
+    /// </summary>
+    public static byte[] ToByteArray(this float[] floatArray)
+    {
+        byte[] byteArray = new byte[floatArray.Length * sizeof(float)];
+        Buffer.BlockCopy(floatArray, 0, byteArray, 0, byteArray.Length);
+        return byteArray;
+    }
+
+    #endregion
+
+    #region byte[]
+
+    /// <summary>
+    /// Reinterprets a byte array as a float array using <see cref="Buffer.BlockCopy"/>.
+    /// Byte array length must be a multiple of 4.
+    /// </summary>
+    public static float[] ToFloatArray(this byte[] byteArray)
+    {
+        ArgumentNullException.ThrowIfNull(byteArray);
+
+        if (byteArray.Length % sizeof(float) != 0)
+            throw new ArgumentException("Byte array length must be a multiple of 4.", nameof(byteArray));
+
+        float[] floatArray = new float[byteArray.Length / sizeof(float)];
+        Buffer.BlockCopy(byteArray, 0, floatArray, 0, byteArray.Length);
+        return floatArray;
+    }
+
+    #endregion
+
+    #region ChannelReader<T>
+
+    /// <summary>
+    /// Reads up to <paramref name="maxCount"/> items from a <see cref="ChannelReader{T}"/>,
+    /// stopping early when no more items are immediately available.
+    /// </summary>
+    public static async Task<List<T>> ReadMany<T>(this ChannelReader<T> reader, int maxCount, CancellationToken cancellationToken = default)
+    {
+        List<T> results = new List<T>(maxCount);
+
+        while (results.Count < maxCount && await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            if (reader.TryRead(out T item))
+                results.Add(item);
+        }
+
+        return results;
+    }
 
     #endregion
 
