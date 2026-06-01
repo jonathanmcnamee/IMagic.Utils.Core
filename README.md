@@ -271,13 +271,31 @@ string id = DriveUtil.GetHardwareIdOrNetworkPath("C"); // e.g. "USBSTOR\DISK&VEN
 Releases are published to [NuGet.org](https://www.nuget.org/packages/IMagic.Utils.Core) automatically via [GitHub Actions](.github/workflows/nuget-publish.yml) when a `v*` tag is pushed:
 
 ```bash
-git tag v1.0.0.29
-git push origin v1.0.0.29
+git tag v1.0.0.30
+git push origin v1.0.0.30
 ```
 
 You can also trigger a publish manually from the **Actions** tab using the `workflow_dispatch` input with an explicit version number.
 
 The pipeline runs **build → test → pack → push** using the `NUGET_API_KEY` repository secret.
+
+### Local publish (manual)
+
+```powershell
+$env:NUGET_API_KEY = "<your-nuget-api-key>"
+
+dotnet pack .\IMagic.Utils\IMagic.Utils.Core.csproj -c Release
+
+dotnet nuget push .\IMagic.Utils\bin\Release\*.nupkg `
+  --api-key $env:NUGET_API_KEY `
+  --source https://api.nuget.org/v3/index.json `
+  --skip-duplicate
+
+dotnet nuget push .\IMagic.Utils\bin\Release\*.snupkg `
+  --api-key $env:NUGET_API_KEY `
+  --source https://api.nuget.org/v3/index.json `
+  --skip-duplicate
+```
 
 ---
 

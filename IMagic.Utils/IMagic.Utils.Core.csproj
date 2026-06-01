@@ -8,11 +8,11 @@
     <Description>A collection of generic extension methods and other utilities</Description>
     <Product>IMagic.Utils.Core</Product>
     <Copyright>Copyright © Jonathan Mc Namee 2025</Copyright>
-    <AssemblyVersion>1.0.0.29</AssemblyVersion>
-    <FileVersion>1.0.0.29</FileVersion>
+    <AssemblyVersion>1.0.0.32</AssemblyVersion>
+    <FileVersion>1.0.0.32</FileVersion>
     <!-- Modern NuGet metadata -->
     <PackageId>IMagic.Utils.Core</PackageId>
-    <Version>1.0.0.29</Version>
+    <Version>1.0.0.32</Version>
     <Authors>Jonathan Mc Namee</Authors>
     <Company>Jonathan Mc Namee</Company>
     <PackageDescription>A collection of generic extension methods and other utilities</PackageDescription>
@@ -24,6 +24,10 @@
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <!-- Include repository README in NuGet package root and show it on nuget.org -->
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 
   <ItemGroup>

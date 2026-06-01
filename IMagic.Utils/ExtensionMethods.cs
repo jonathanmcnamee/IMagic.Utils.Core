@@ -50,7 +50,7 @@ public static partial class ExtensionMethods
     #region Static Fields
 
     // Cached encoding instance — Encoding.GetEncoding does a name lookup on every call
-    private static readonly Encoding CyrillicEncoding = Encoding.GetEncoding("Cyrillic");
+    //private static readonly Encoding CyrillicEncoding = Encoding.GetEncoding("Cyrillic");
 
     // Cached char[] for UrlFriendly Trim — eliminates per-call "- ".ToCharArray() (maps to report §2.6b)
     private static readonly char[] UrlTrimChars = ['-', ' '];
@@ -412,23 +412,54 @@ public static partial class ExtensionMethods
 
     #region enum
 
-    public static string EnumDescription(this Enum enumValue)
+    //public static string EnumDescription(this Enum enumValue)
+    //{
+    //    if (enumValue == null || enumValue.ToString() == "0")
+    //    {
+    //        return string.Empty;
+    //    }
+    //    FieldInfo enumInfo = enumValue.GetType().GetField(enumValue.ToString());
+    //    DescriptionAttribute[] enumAttributes = (DescriptionAttribute[])enumInfo.GetCustomAttributes(typeof(DescriptionAttribute), false);
+    //    if (enumAttributes.Length > 0)
+    //    {
+    //        return enumAttributes[0].Description;
+    //    }
+    //    else
+    //    {
+    //        return enumValue.ToString();
+    //    }
+    //}
+
+    //public static string EnumDescription(this Enum enumValue)
+    //{
+    //    var field = enumValue.GetType().GetField(enumValue.ToString());
+    //    var attr = field?.GetCustomAttribute<DescriptionAttribute>();
+    //    return attr?.Description ?? throw new InvalidOperationException(
+    //        $"Enum value {enumValue} lacks a DescriptionAttribute.");
+    //}
+
+    public static string EnumDescription(this Enum enumValue, bool fallbackToEnumName = false)
     {
-        if (enumValue == null || enumValue.ToString() == "0")
+        if (enumValue == null)
         {
-            return string.Empty;
+            throw new ArgumentNullException(nameof(enumValue));
         }
-        FieldInfo enumInfo = enumValue.GetType().GetField(enumValue.ToString());
-        DescriptionAttribute[] enumAttributes = (DescriptionAttribute[])enumInfo.GetCustomAttributes(typeof(DescriptionAttribute), false);
-        if (enumAttributes.Length > 0)
+
+        var field = enumValue.GetType().GetField(enumValue.ToString());
+        var attr = field?.GetCustomAttribute<DescriptionAttribute>();
+        if (attr != null)
         {
-            return enumAttributes[0].Description;
+            return attr.Description;
         }
-        else
+
+        if (fallbackToEnumName)
         {
             return enumValue.ToString();
         }
+
+        throw new InvalidOperationException($"Enum value '{enumValue}' lacks a DescriptionAttribute. Use fallbackToEnumName=true to allow fallback.");
     }
+
 
     public static string FlagsDescription(this Enum enumValue)
     {
@@ -767,14 +798,13 @@ public static partial class ExtensionMethods
                .Replace("&", "and")
                .Replace(".", "-")
                .Replace(" ", "-")
-               .RemoveAccent()
                .StripNonAplhaNumeric();
         return output;
     }
 
     public static string UrlFriendly(this string text)
     {
-        string str = text.RemoveAccent().ToLower();
+        string str = text.ToLower();
         str = UrlInvalidCharsRegex().Replace(str, "");
         str = UrlSpacesHyphensRegex().Replace(str, "-");
         str = str.Trim(UrlTrimChars);
@@ -833,11 +863,11 @@ public static partial class ExtensionMethods
     }
 
     //fails on .net Standard :(
-    public static string RemoveAccent(this string txt)
-    {
-        byte[] bytes = CyrillicEncoding.GetBytes(txt);
-        return Encoding.ASCII.GetString(bytes);
-    }
+    //public static string RemoveAccent(this string txt)
+    //{
+    //    byte[] bytes = CyrillicEncoding.GetBytes(txt);
+    //    return Encoding.ASCII.GetString(bytes);
+    //}
 
 
     public static string StripNonAplhaNumeric(this string s)
