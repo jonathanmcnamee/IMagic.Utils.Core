@@ -1341,6 +1341,7 @@ memberExpression.Member.Name
     /// </summary>
     public static byte[] ToByteArray(this float[] floatArray)
     {
+        ArgumentNullException.ThrowIfNull(floatArray);
         byte[] byteArray = new byte[floatArray.Length * sizeof(float)];
         Buffer.BlockCopy(floatArray, 0, byteArray, 0, byteArray.Length);
         return byteArray;

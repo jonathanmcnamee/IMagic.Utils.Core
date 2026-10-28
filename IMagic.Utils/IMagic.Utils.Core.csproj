@@ -8,11 +8,11 @@
     <Description>A collection of generic extension methods and other utilities</Description>
     <Product>IMagic.Utils.Core</Product>
     <Copyright>Copyright © Jonathan Mc Namee 2025</Copyright>
-    <AssemblyVersion>1.0.0.32</AssemblyVersion>
-    <FileVersion>1.0.0.32</FileVersion>
+    <AssemblyVersion>1.0.0.34</AssemblyVersion>
+    <FileVersion>1.0.0.34</FileVersion>
     <!-- Modern NuGet metadata -->
     <PackageId>IMagic.Utils.Core</PackageId>
-    <Version>1.0.0.32</Version>
+    <Version>1.0.0.34</Version>
     <Authors>Jonathan Mc Namee</Authors>
     <Company>Jonathan Mc Namee</Company>
     <PackageDescription>A collection of generic extension methods and other utilities</PackageDescription>
@@ -31,8 +31,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SystemWebAdapters" Version="2.3.0" />
     <PackageReference Include="System.Management" Version="10.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="IMagic.Utils.Core.Tests" />
   </ItemGroup>
   <ItemGroup>
     <!-- README at repository root - include it in the package root so it appears on nuget.org -->

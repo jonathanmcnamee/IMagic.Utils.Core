@@ -18,6 +18,14 @@ public static class DriveUtil
     private const int ERROR_MORE_DATA = 234;
     private const int NO_ERROR = 0;
 
+    // Layout returned by WNetGetUniversalName when UNIVERSAL_NAME_INFO_LEVEL is used:
+    // the first (and only) field is a pointer to the UNC string inside the same buffer.
+    [StructLayout(LayoutKind.Sequential)]
+    private struct UniversalNameInfo
+    {
+        public IntPtr UniversalName;
+    }
+
     /// <summary>
     /// Gets the hardware ID (PNP device ID) for a local drive or the UNC path for a network-mapped drive.
     /// Windows-only: uses WMI (<c>System.Management</c>) and WinAPI (<c>mpr.dll</c>).
@@ -91,24 +99,38 @@ public static class DriveUtil
     private static string GetUNCPath(string localPath)
     {
         int size = 512;
-        IntPtr buffer = Marshal.AllocHGlobal(size);
+        IntPtr buffer = IntPtr.Zero;
         try
         {
+            buffer = Marshal.AllocHGlobal(size);
             int result = WNetGetUniversalName(localPath, UNIVERSAL_NAME_INFO_LEVEL, buffer, ref size);
             if (result == ERROR_MORE_DATA)
             {
+                // On ERROR_MORE_DATA the API reports the required size in bytes.
                 Marshal.FreeHGlobal(buffer);
+                buffer = IntPtr.Zero;
                 buffer = Marshal.AllocHGlobal(size);
                 result = WNetGetUniversalName(localPath, UNIVERSAL_NAME_INFO_LEVEL, buffer, ref size);
             }
 
             if (result == NO_ERROR)
-                return Marshal.PtrToStringUni(buffer);
+                return ReadUniversalName(buffer);
         }
         finally
         {
-            Marshal.FreeHGlobal(buffer);
+            if (buffer != IntPtr.Zero)
+                Marshal.FreeHGlobal(buffer);
         }
         return null;
+    }
+
+    // Pure marshalling - no OS dependency, kept internal so the struct layout can be unit tested.
+    internal static string ReadUniversalName(IntPtr buffer)
+    {
+        if (buffer == IntPtr.Zero)
+            return null;
+
+        IntPtr namePtr = Marshal.PtrToStructure<UniversalNameInfo>(buffer).UniversalName;
+        return namePtr == IntPtr.Zero ? null : Marshal.PtrToStringUni(namePtr);
     }
 }
